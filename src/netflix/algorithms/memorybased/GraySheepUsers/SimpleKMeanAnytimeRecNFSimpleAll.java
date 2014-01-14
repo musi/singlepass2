@@ -156,7 +156,10 @@ public class SimpleKMeanAnytimeRecNFSimpleAll
 	int 				myFlg =1; //done by me..........
 	int 				currentFold;
 	IntArrayList		myCentroids1, myCentroids2,myCentroids3,myCentroids4,myCentroids5;
-
+	private static int  MAX_NEAREST_NEIGHBOURS = 70;
+	private static int  MIN_NEIGHBOURS = 5;
+	private static int  NEIGHBOURS_INCREMENT = 10;
+	
 
 	/************************************************************************************************/
 
@@ -278,10 +281,8 @@ public class SimpleKMeanAnytimeRecNFSimpleAll
 	 */
 
 	//callno 1
-	public void callKTree(int callNo )     
+	public void makeClusters(int callNo )     
 	{
-		//5,3,3,3,3; KMeans was like 1.13 and remaining 1.08 RMSE
-		// 5,5,5,5,5; the diff is like 1.11 and 1.06
 		//-----------------------
 		// K-Means
 		//-----------------------
@@ -359,7 +360,7 @@ public class SimpleKMeanAnytimeRecNFSimpleAll
 				weightSum += Math.abs(clusterWeight);      		
 				voteSum+= (clusterWeight*(clusterRating-clusterAverage)) ;
 
-				if(total++ == 70) break;
+				if(total++ == neighbours) break;
 			}
 
 		}// end of for
@@ -438,11 +439,11 @@ public class SimpleKMeanAnytimeRecNFSimpleAll
 	{   
 		myPath = path;
 
-		//		optimal clusters, (1) sml =150, (2) ft1= 100, ft5 = 140
+	//	optimal clusters, (1) sml =150, (2) ft1= 100, ft5 = 140
 
 	//	myTotalFolds = 5;   
 		openFile();
-		//		Build the tree based on training set only
+	// Build the tree based on training set only
 		simVersion = 2;
 
 		System.out.println("==========================================================================");
@@ -463,20 +464,15 @@ public class SimpleKMeanAnytimeRecNFSimpleAll
 			trainMMh  = new MemHelper(trainFile);
 			testMMh 	= new MemHelper(testFile);	  
 
-//			 trainSVMRegMMh 	= 	getSparseSVMRegressionModel(fold);
-//			 trainSVMClassMMh 	= 	getSparseSVMClassModel(fold);
-//			 trainNBMMh	 		= 	getSparseNBModel(fold);
-//			 trainKNNMMh 		= 	getSparseKNNModel(fold);
 
-//			User based Filter setting
-			
-//			myUserBasedFilter = new FilterAndWeight(trainMMh,1); 		       //with mmh object
-//			myItemRec = new ItemItemRecommender(true, 5);
+//			User- and item- based CF setting
+			myUserBasedFilter = new FilterAndWeight(trainMMh,1); 		       
+			myItemRec = new ItemItemRecommender(true, 5);
 
 //			Make the objects and keep them fixed throughout the program
 			for (int v=5;v<=5;v++)
 			{	  
-				//				object of single pass class
+				//	object of single pass class
 				singlePass = new SinglePass(trainMMh);	
 
 				System.out.println("done reading objects");				   	  
@@ -485,11 +481,15 @@ public class SimpleKMeanAnytimeRecNFSimpleAll
 				System.out.println("=====================");
 
 				//Build spheres ...myFlg is call number....
-				callKTree (myFlg);										  			   
-				timer.start();		
-				// neighbours are here........ 10 number of neighbours.....
-				testWithMemHelper(testMMh,10);
-				timer.stop();
+				makeClusters (myFlg);										  			   
+						
+				// We need to learn the no. of neighbours for the final thesis
+				for(int neighbours = MIN_NEIGHBOURS; neighbours < MAX_NEAREST_NEIGHBOURS; neighbours+=NEIGHBOURS_INCREMENT) {
+					timer.start();
+					testWithMemHelper(testMMh,neighbours);
+					timer.stop();
+				}
+				
 
 			}
 		}
@@ -538,7 +538,7 @@ public class SimpleKMeanAnytimeRecNFSimpleAll
 				mid = MemHelper.parseUserOrMovie(movies.getQuick(j));
 
 				// double rrr = recommend(uid, mid, blank);                
-				//  double rrr = recommend(uid, mid, neighbours);
+				// double rrr = recommend(uid, mid, neighbours);
 
 				double rrr = recommendSphere(uid, mid, neighbours);
 				//  System.out.println(rrr);
@@ -563,11 +563,6 @@ public class SimpleKMeanAnytimeRecNFSimpleAll
 										", User saw movies="+mh.getNumberOfMoviesSeen(uid));*/
 					}
 
-					if(rrr>5 || rrr<-1) {
-					} else if(Math.abs(rrr-myRating)<=0.5) {
-					} else if(Math.abs(rrr-myRating)<=1.0) {
-					} else if (rrr==myRating) {
-					}
 
 
 					//-------------
@@ -640,7 +635,7 @@ public class SimpleKMeanAnytimeRecNFSimpleAll
 //		kMeanCluster_Nmae 	= rmse.nmae_ClusterKNNFinal(1, 5);
 		
 		//-------------------------------------------------
-		//Calculate top-N    		            
+		//Calculate top-N results (e.g. F1, Precision, Recall)  		            
 
 		for(int i=0;i<8;i++)	//N from 5 to 30
 		{
@@ -697,7 +692,7 @@ public class SimpleKMeanAnytimeRecNFSimpleAll
 
 
 //		--------------------------------------------------------------------------------------
-//			Printing of results
+//		Printing of results
 		System.out.println(" Spheres = " + nSpheres ); 	
 		System.out.print("Coverage="+coverage);
 		System.out.print(",");
@@ -914,7 +909,6 @@ public class SimpleKMeanAnytimeRecNFSimpleAll
 
 	//----------------------------
 
-
 	public void closeFile()    
 	{
 		try 
@@ -929,7 +923,6 @@ public class SimpleKMeanAnytimeRecNFSimpleAll
 			System.out.println("error closing the roc file pointer");
 		}
 	}
-
 
 	//---------------------------------------
 

@@ -1,10 +1,7 @@
 package netflix.algorithms.memorybased.GraySheepUsers;
 
-import java.io.BufferedWriter;
 
-import java.io.FileWriter;
 import java.util.*;
-
 import netflix.memreader.*;
 import netflix.utilities.*;
 import cern.colt.list.*;
@@ -15,7 +12,7 @@ public class SinglePass
 {
 	private MemHelper 					helper;
 	private	int 						callNo;					 
-	Timer227 							timer;    
+	private Timer227 							timer;    
 
 	private ArrayList<IntArrayList> 	finalClusters;
 	private OpenIntIntHashMap 			uidToCluster;
@@ -23,13 +20,13 @@ public class SinglePass
 	private ArrayList<IntArrayList> 	finalSpheres;
 	private OpenIntIntHashMap 			uidToSphere;
 
-	ArrayList<Centroid> 				centroids;
-	ArrayList<Centroid> 				newCentroids;
-	ArrayList<Centroid> 				sphereCentroids;
+	private ArrayList<Centroid> 				centroids;
+	private ArrayList<Centroid> 				newCentroids;
+	private ArrayList<Centroid> 				sphereCentroids;
 
-	OpenIntIntHashMap   				clusterMap;
-	OpenIntIntHashMap   				sphereMap;
-	int									simVersion;
+	private OpenIntIntHashMap   				clusterMap;
+	private OpenIntIntHashMap   				sphereMap;
+	private int									simVersion;
 
 	/************************************************************************************************/
 
@@ -40,19 +37,19 @@ public class SinglePass
 	public SinglePass(MemHelper helper)    
 	{
 		this.helper   	= helper;
-		finalClusters 	= new ArrayList<IntArrayList>(); //Creates ArrayList with initial default capacity 10.
-		uidToCluster  	= new OpenIntIntHashMap();       // <E> is for an element in the arraylist
-		clusterMap 	  	= new OpenIntIntHashMap();
-		sphereMap 	  	= new OpenIntIntHashMap();
+		this.finalClusters 	= new ArrayList<IntArrayList>(); //Creates ArrayList with initial default capacity 10.
+		this.uidToCluster  	= new OpenIntIntHashMap();       // <E> is for an element in the arraylist
+		this.clusterMap 	  	= new OpenIntIntHashMap();
+		this.sphereMap 	  	= new OpenIntIntHashMap();
 
-		finalSpheres 	= new ArrayList<IntArrayList>(); //Creates ArrayList with initial default capacity 10.
-		uidToSphere  	= new OpenIntIntHashMap();
+		this.finalSpheres 	= new ArrayList<IntArrayList>(); //Creates ArrayList with initial default capacity 10.
+		this.uidToSphere  	= new OpenIntIntHashMap();
 
-		centroids 		= new ArrayList<Centroid> ();
-		newCentroids 	= new ArrayList<Centroid> ();
-		sphereCentroids = new ArrayList<Centroid> ();
-		callNo	  		= 0;
-		timer  	  		= new Timer227();
+		this.centroids 		= new ArrayList<Centroid> ();
+		this.newCentroids 	= new ArrayList<Centroid> ();
+		this.sphereCentroids = new ArrayList<Centroid> ();
+		this.callNo	  		= 0;
+		this.timer  	  		= new Timer227();
 	}
 
 	/************************************************************************************************/ 
@@ -65,7 +62,7 @@ public class SinglePass
 		//    	final spheres that will be created .........
 
 		finalSpheres 	= constructRecTreeSphere(helper.getListOfUsers(),  
-				helper.getGlobalAverage());
+													helper.getGlobalAverage());
 
 		//-------------------
 		// Make map
@@ -283,7 +280,7 @@ public class SinglePass
 	 * @return
 	 */
 	public SphereCollection nSphere(IntArrayList dataset, 		//all users in the database					
-			double cliqueAverage) 		//golbal average in the database    
+									double cliqueAverage) 		//golbal average in the database    
 	{
 
 		//    	They will be initialized for every call
@@ -565,192 +562,6 @@ public class SinglePass
 	}    
 	/*******************************************************************************************************/
 
-	public void writeClustersIntoAFile(ArrayList<IntArrayList> myClusters)
-	{
 
-		String 			path ="C:\\Users\\AsHi\\workspace\\MusiRecommender\\DataSets\\SML_ML\\SVD\\Clustering\\";
-		IntArrayList 	cluster;
-		int K 			= myClusters.size();
-		BufferedWriter  writeData[] = new BufferedWriter[K];
-		BufferedWriter writeInfo=null;
-
-		try {
-			writeInfo   = new BufferedWriter(new FileWriter(path + "ClusterInfo.dat", true));
-		}
-
-		catch (Exception E)
-		{
-			System.out.println("error opening the file pointer of info");
-			System.exit(1);
-		}
-
-		int mid=0;
-		int uid=0;
-		double rating =0;
-
-		//needed dimensions of matrix for SVD
-		IntArrayList allUsersInACluster = new IntArrayList();
-		IntArrayList allMoviesInACluster = new IntArrayList();
-		String clusterInfo = "";
-
-		//open files
-		openFile(writeData,path,K);
-		openFile(writeInfo,path);        
-
-		//open training set
-		MemHelper helper = new MemHelper
-				("C:\\Users\\AsHi\\workspace\\MusiRecommender\\DataSets\\SML_ML\\SVD\\sml_TrainSetStored.dat"); //training set, will be used for SVD as well
-
-
-		for(int i = 0; i < K; i++) //for all clusters 
-		{  
-			cluster = myClusters.get(i);
-
-			for(int j = 0; j < cluster.size(); j++)	//a cluster is a collection of users, go through this             
-			{ 
-				uid =  cluster.get(j);           
-				LongArrayList movies = helper.getMoviesSeenByUser(uid); //get all movies seen by this user
-
-				if( !(allUsersInACluster.contains(uid)) )				 //get size of all distinct users	 
-					allUsersInACluster.add(uid);
-
-				//write this data into a file -->all movies 
-				for (int r = 0; r < movies.size(); r++)             
-				{            	
-					mid = MemHelper.parseUserOrMovie(movies.getQuick(r));
-					rating = helper.getRating(uid, mid);	
-
-					//if (rating <1 || rating>5) System.out.println("rating =" + rating);
-					//if (i==0 && uid==43) System.out.println(uid + "," + mid + "," + rating);
-
-					if( !(allMoviesInACluster.contains(mid)) ) 		//get size of all distinct movies
-						allMoviesInACluster.add(mid);
-
-					//write one sample in a file
-					try {
-						writeData[i].write(uid + "," + mid + "," + rating); //uid, mid, rating
-						writeData[i].newLine();
-					}
-					catch (Exception E)
-					{
-						System.out.println("error writing the file pointer of cluster writing");
-						System.exit(1);
-					}//end of writing
-
-				}//end of all movues seen by a user
-			}//end of all users in a clusters
-
-			//Now write info in a String
-			clusterInfo+= "Cluster = " + (i+1) + "," + allUsersInACluster.size() + "," + allMoviesInACluster.size();
-			// System.out.println(clusterInfo);
-			// clusterInfo+="\n";
-
-			allUsersInACluster.clear();
-			allMoviesInACluster.clear();
-
-		} //end of all clusters
-
-
-		//_____________________________________________
-		//Write Info in a file
-
-		try {
-			writeInfo.write(clusterInfo);
-		}	
-		catch (Exception E)
-		{
-			System.out.println("error writing the file pointer of info");
-			E.printStackTrace();
-			System.exit(1);
-		}//end of writing
-
-
-		//close all files
-		closeFile(writeData, K);
-		closeFile(writeInfo);
-		//_____________________________________________
-		//Now we want to write these files into memory
-		MemReader myR = new MemReader();
-
-		for(int i=0;i<K;i++)
-		{
-			myR.writeIntoDisk(path+"Cluster" + (i+1) + ".dat" , path+"StoredCluster" + (i+1) + ".dat", true);
-		}
-
-	}
-
-	//-----------------------------
-
-	public void openFile(BufferedWriter writeData[], String myPath, int n)    
-	{
-
-		try 
-		{
-			for(int i=0;i<n;i++)
-				writeData[i] = new BufferedWriter(new FileWriter(myPath + "Cluster" + (i+1) + ".dat", true));
-
-		}
-
-		catch (Exception E)
-		{
-			System.out.println("error opening the file pointer of cluster files");
-			System.exit(1);
-		}
-
-		System.out.println("Rec File Created");
-	}
-
-	//--------------------------------
-
-	public void openFile(BufferedWriter w,String myPath)    
-	{
-
-		try {
-
-			w = new BufferedWriter(new FileWriter(myPath + "ClusterInfo.dat", true));
-
-		}
-
-		catch (Exception E)
-		{
-			System.out.println("error opening the file pointer of info");
-			System.exit(1);
-		}
-
-		System.out.println("Rec File Created");
-	}
-
-	//----------------------------
-
-
-	public void closeFile(BufferedWriter writeData[], int n)    
-	{
-
-		try {
-
-			for(int i=0;i<n;i++)
-				writeData[i].close();}
-
-		catch (Exception E)
-		{
-			System.out.println("error closing the clustering file pointer");
-		}
-
-	}
-
-	//-----------------------------
-	public void closeFile(BufferedWriter writeData)    
-	{
-
-		try {
-
-			writeData.close();}
-
-		catch (Exception E)
-		{
-			System.out.println("error closing the info file pointer");
-		}
-
-	}
 }
 
